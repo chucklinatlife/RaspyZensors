@@ -119,7 +119,7 @@ void scrollMessage (const char* message, int line, int width)
 //functions for UltraSonic
 
 void ZonicSetup(){
-	wiringPiSetup();
+	//wiringPiSetup();
 	pinMode(TRIG, OUTPUT);
 	pinMode(ECHO, INPUT);
 	digitalWrite(TRIG, LOW);
@@ -167,10 +167,10 @@ void sendEmail(void){
 
 //get Weather Data
 //can implement other cities if have time
-char* getWeather(void){
-	char *wbuff;
+
+char filestring [1000];
+getWeather(void){
 	FILE *f;
-	char filestring [100];
 //	char wbuff2 [32];
 /*	FILE *f = fopen("weather.txt","w");
 	if (f==NULL){
@@ -178,18 +178,22 @@ char* getWeather(void){
 	}
 */
 	system("curl api.openweathermap.org/data/2.5/weather?zip=92612,us >> weather.txt");
-	f = fopen("weather.txt","r");
+	system("cp weather.txt weather2.json");
+	system("python cheatscript.py");
+	f = fopen("weather2.txt","r");
 	if (f==NULL){
 		printf("error opening file!\n");
 	}
-	fgets(filestring,100,f);
-	puts(filestring);
-	//fprintf(f,"Test output for file: %s\n", wbuff);
-	sscanf(wbuff,"\"description\":\"%s\"",filestring);
+	fgets(filestring,1000,f);
+	printf("file_string: %s\n", filestring);
 	fclose(f);
+	//puts(filestring);
+	//fprintf(f,"Test output for file: %s\n", wbuff);
+	//sscanf(filestring,"\"description\":\"%s\"",wbuff);
+	//sscanf(filestring,"{",wbuff);
+	
+	system("sudo rm weather.txt");
 	//scan for weather description
-	wbuff = "weather";
-	return wbuff;	
 }	
 
 void loadSpiDriver()
@@ -254,12 +258,14 @@ int main (int argc, char *argv [])
     int bits = 4; //4 bit mode
     char buf [32];
     char tempbuf [32];
-    char *weatherBuff;
+    char weatherBuff;
     char *tempmsg;
     int lcd;
     struct tm *t ;
     time_t tim ;
     int i;
+    int max_distance;
+    int curr_distance;
   /*
     if (argc < 2)
     {
@@ -308,11 +314,23 @@ int main (int argc, char *argv [])
 pinMode(27, OUTPUT);
 //digitalWrite(27, HIGH);
 pinMode(23, OUTPUT);
+digitalWrite(27,LOW);
+digitalWrite(23,LOW);
 //sendEmail();
-//printf("grabbing weather data\n");
-weatherBuff = getWeather();
-//printf("%s\n", weatherBuff);
+printf("grabbing weather data\n");
+getWeather();
+printf("weather is: %s\n", filestring);
+delay(20);
+
+/*set initial distance for ultrasonic sensor*/
+
+	ZonicSetup();
+	max_distance = getZonicCM();
+
 while(1){
+
+//ZonicSetup();
+curr_distance = getZonicCM();
 if (digitalRead(MODUS_OPERANDI_PIN) == LOW)
 	{mode_flag = (mode_flag+1)%2;
 	delay(500);}
@@ -321,8 +339,8 @@ if (digitalRead(MODUS_OPERANDI_PIN) == LOW)
 */
 /*MODE_FLAG = 0.....HOME MODE
 MODE_FLAG = 1......AWAY MODE */
-
-
+/*MAYBE ADD SET APPLIANCE MODE*/
+printf("How fast is this while?\n");
 
 /*HOME MODE
 *
@@ -347,7 +365,7 @@ MODE_FLAG = 1......AWAY MODE */
  //pingPong (lcd, cols) ;
 
 		temp = steinhartAndHart(myAnalogRead(0,8,0));
-		sprintf (tempbuf, "                 TEMP:%.0fC  MODE:HOME               ", temp); 
+		sprintf (tempbuf,"        TEMP:%.0fC   WEATHER: %s  MODE:HOME              ", temp,filestring); 
 		tempmsg = tempbuf;
 		lcdPosition (lcdHandle, 0, 1);
 		scrollMessage(tempmsg,0, 16);
@@ -381,9 +399,15 @@ MODE_FLAG = 1......AWAY MODE */
 	else {
 		 digitalWrite(23,LOW);
 		 digitalWrite(27,HIGH);
+		
 		//printf("mode_flag = %d\n", mode_flag);
 		//delay(500);
 		//mode_flag = 0; //do something
+		/*
+		if (curr_distance < max_distance){
+			printf("Intruder at %d!\n",getZonicCM());
+			}*/
+		 printf("%d cm\n", getZonicCM());
 		 tim = time (NULL) ;
 		 t = localtime (&tim) ;
 
@@ -395,12 +419,13 @@ MODE_FLAG = 1......AWAY MODE */
 
 
 		temp = steinhartAndHart(myAnalogRead(0,8,0));
-		sprintf (tempbuf, "Temp:%.0fC    AWAY", temp); 
+		sprintf (tempbuf, "                Temp:%.0fC   MODE:AWAY                 ", temp); 
 		lcdPosition (lcdHandle, 0, 0);
-		lcdPuts (lcdHandle, tempbuf);
+		//lcdPuts (lcdHandle, tempbuf);
+		scrollMessage(tempbuf,0,16);
 //		printf("got here1\n");
 /*ULTRASONIC SENSOR*/			
-		printf("Distance: %dcm\n",getZonicCM());
+	//	printf("Distance: %dcm\n",getZonicCM());
 	//	delay(2000);
 		/*
 		if (digitalRead(BUTTON) == LOW){
