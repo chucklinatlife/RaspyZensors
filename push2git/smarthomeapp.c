@@ -168,7 +168,7 @@ void sendEmail(void){
 //get Weather Data
 //can implement other cities if have time
 char* getWeather(void){
-	char wbuff [40];
+	char *wbuff;
 	FILE *f;
 	char filestring [100];
 //	char wbuff2 [32];
@@ -183,11 +183,12 @@ char* getWeather(void){
 		printf("error opening file!\n");
 	}
 	fgets(filestring,100,f);
-	printf("%s", filestring);
+	puts(filestring);
 	//fprintf(f,"Test output for file: %s\n", wbuff);
-	sscanf(wbuff,"\"description\":\"%c\"",filestring);
+	sscanf(wbuff,"\"description\":\"%s\"",filestring);
 	fclose(f);
 	//scan for weather description
+	wbuff = "weather";
 	return wbuff;	
 }	
 
@@ -310,7 +311,7 @@ pinMode(23, OUTPUT);
 //sendEmail();
 //printf("grabbing weather data\n");
 weatherBuff = getWeather();
-printf("%s\n", weatherBuff);
+//printf("%s\n", weatherBuff);
 while(1){
 if (digitalRead(MODUS_OPERANDI_PIN) == LOW)
 	{mode_flag = (mode_flag+1)%2;
