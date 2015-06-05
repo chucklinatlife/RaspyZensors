@@ -167,8 +167,10 @@ void sendEmail(void){
 
 //get Weather Data
 //can implement other cities if have time
-char getWeather(void){
-	char *wbuff;
+char* getWeather(void){
+	char wbuff [40];
+	FILE *f;
+	char filestring [100];
 //	char wbuff2 [32];
 /*	FILE *f = fopen("weather.txt","w");
 	if (f==NULL){
@@ -176,10 +178,16 @@ char getWeather(void){
 	}
 */
 	system("curl api.openweathermap.org/data/2.5/weather?zip=92612,us >> weather.txt");
+	f = fopen("weather.txt","r");
+	if (f==NULL){
+		printf("error opening file!\n");
+	}
+	fgets(filestring,100,f);
+	printf("%s", filestring);
 	//fprintf(f,"Test output for file: %s\n", wbuff);
-	//fclose(f);
+	sscanf(wbuff,"\"description\":\"%c\"",filestring);
+	fclose(f);
 	//scan for weather description
-	sscanf(wbuff,"\"description\":\"%s\"",wbuff);
 	return wbuff;	
 }	
 
@@ -299,7 +307,7 @@ int main (int argc, char *argv [])
 pinMode(27, OUTPUT);
 //digitalWrite(27, HIGH);
 pinMode(23, OUTPUT);
-sendEmail();
+//sendEmail();
 //printf("grabbing weather data\n");
 weatherBuff = getWeather();
 printf("%s\n", weatherBuff);
