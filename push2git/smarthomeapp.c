@@ -39,6 +39,13 @@
 #define D 	6.383091e-08
 #define thermistorR25	10000    //R25 value for thermistor
 
+//for das Ultra
+#define TRIG 21
+#define ECHO 22
+
+
+
+
 float padResistance = 9982;	//measured resistance pad resistor
 
 float temp;
@@ -109,7 +116,32 @@ void scrollMessage (const char* message, int line, int width)
     position = 0 ;
 }
 
+//functions for UltraSonic
 
+void ZonicSetup(){
+	wiringPiSetup();
+	pinMode(TRIG, OUTPUT);
+	pinMode(ECHO, INPUT);
+	digitalWrite(TRIG, LOW);
+	delay(30);
+}
+
+
+int getZonicCM(){
+//	printf("in getCM\n");
+	digitalWrite(TRIG,HIGH);
+//	printf("trigger should be high\n");
+	delayMicroseconds(20);
+	digitalWrite(TRIG, LOW);
+	
+	while(digitalRead(ECHO)==LOW);
+	long startTime = micros();
+	while(digitalRead(ECHO) == HIGH);
+	long travelTime = micros()-startTime;
+	int distance = travelTime/58;
+
+	return distance;
+}
 
 
 char *usage = "Usage: mcp3008 all|analogChannel[1-8] [-l] [-ce1] [-d]";
@@ -138,17 +170,17 @@ void sendEmail(void){
 char getWeather(void){
 	char *wbuff;
 //	char wbuff2 [32];
-	FILE *f = fopen("weather.txt","w");
+/*	FILE *f = fopen("weather.txt","w");
 	if (f==NULL){
 		printf("error opening file!\n");
 	}
-
-	wbuff = system("curl api.openweathermap.org/data/2.5/weather?zip=92612,us");
-	fprintf(f,"Test output for file: %s\n", wbuff);
-	fclose(f);
+*/
+	system("curl api.openweathermap.org/data/2.5/weather?zip=92612,us >> weather.txt");
+	//fprintf(f,"Test output for file: %s\n", wbuff);
+	//fclose(f);
 	//scan for weather description
-	//sscanf(wbuff,"\"description\":\"%c\"",wbuff);
-	return wbuff;
+	sscanf(wbuff,"\"description\":\"%s\"",wbuff);
+	return wbuff;	
 }	
 
 void loadSpiDriver()
@@ -213,7 +245,7 @@ int main (int argc, char *argv [])
     int bits = 4; //4 bit mode
     char buf [32];
     char tempbuf [32];
-    char weatherBuff;
+    char *weatherBuff;
     char *tempmsg;
     int lcd;
     struct tm *t ;
@@ -263,32 +295,6 @@ int main (int argc, char *argv [])
     fprintf (stderr, "%s: lcdInit failed\n", argv [0]) ;
     return -1 ;
   }
-    //Change code to print out 3 channels only
- #if 0   
-    if(analogChannel>0)
-    {
-        printf("MCP3008(CE%d,%s): analogChannel %d = %d\n",spiChannel,(channelConfig==CHAN_CONFIG_SINGLE)
-               ?"single-ended":"differential",analogChannel,myAnalogRead(spiChannel,channelConfig,analogChannel-1));
-    }
-    else
-    {
-        for(i=0;;i++)
-        {
-            detectButton();
-		printf("Thermistor Output (Channel 1):\n");
-		printf("-----------------\n");
-		temp = steinhartAndHart(myAnalogRead(0,8,0));
-		printf("Celsius: %.02f\n", temp);		//print out temperature in Celsius
-		temp = (temp * 9.0)/5.0 + 32.0;
-		printf("Fahrenheit: %.02f\n", temp);		//print out temperature in Fahrenheit
-	   mode_flag = detectMode(modus_operandi);		//by default on home mode
-	   printf("modeflag:%d\n", mode_flag);
-	   if( mode_flag % 2 == 0)
-		{printf("Security Mode!\n");}
-   	}
-    }
-	close (myFd) ;
-#endif
 //-------------Begin Infinite Loop
 pinMode(27, OUTPUT);
 //digitalWrite(27, HIGH);
@@ -296,7 +302,7 @@ pinMode(23, OUTPUT);
 sendEmail();
 //printf("grabbing weather data\n");
 weatherBuff = getWeather();
-//printf("%c\n", weatherBuff);
+printf("%s\n", weatherBuff);
 while(1){
 if (digitalRead(MODUS_OPERANDI_PIN) == LOW)
 	{mode_flag = (mode_flag+1)%2;
@@ -363,35 +369,40 @@ MODE_FLAG = 1......AWAY MODE */
 *TAKE IN LDR AND SONIC SENSOR DATA
 *
 */
-else {
-	 digitalWrite(23,LOW);
-	 digitalWrite(27,HIGH);
-	//printf("mode_flag = %d\n", mode_flag);
-	//delay(500);
-	//mode_flag = 0; //do something
-	 tim = time (NULL) ;
-	 t = localtime (&tim) ;
+	else {
+		 digitalWrite(23,LOW);
+		 digitalWrite(27,HIGH);
+		//printf("mode_flag = %d\n", mode_flag);
+		//delay(500);
+		//mode_flag = 0; //do something
+		 tim = time (NULL) ;
+		 t = localtime (&tim) ;
 
-	 sprintf (buf, "%02d:%02d:%02d   %02d/%02d", t->tm_hour, t->tm_min, t->tm_sec, t->tm_mon, t->tm_mday) ;
+		 sprintf (buf, "%02d:%02d:%02d   %02d/%02d", t->tm_hour, t->tm_min, t->tm_sec, t->tm_mon, t->tm_mday) ;
 
-	 //lcdPosition (lcdHandle, (cols - 8) / 2, 1) ;
-	 lcdPosition (lcdHandle, 0, 1);
-	 lcdPuts     (lcdHandle, buf) ;
+		 //lcdPosition (lcdHandle, (cols - 8) / 2, 1) ;
+		 lcdPosition (lcdHandle, 0, 1);
+		 lcdPuts     (lcdHandle, buf) ;
 
 
-	temp = steinhartAndHart(myAnalogRead(0,8,0));
-	sprintf (tempbuf, "Temp:%.0fC    AWAY", temp); 
-	lcdPosition (lcdHandle, 0, 0);
-	lcdPuts (lcdHandle, tempbuf);
-	
-	if (digitalRead(BUTTON) == LOW){
-		printf("\n------AWAY MODE------\n");
-		printf("LDR Output (Channel 2):\n");
-		printf("LDR Output: %d\n", myAnalogRead(0,8,1));
-		printf("-----------------\n");
-		//delay(200);
+		temp = steinhartAndHart(myAnalogRead(0,8,0));
+		sprintf (tempbuf, "Temp:%.0fC    AWAY", temp); 
+		lcdPosition (lcdHandle, 0, 0);
+		lcdPuts (lcdHandle, tempbuf);
+//		printf("got here1\n");
+/*ULTRASONIC SENSOR*/			
+		printf("Distance: %dcm\n",getZonicCM());
+	//	delay(2000);
+		/*
+		if (digitalRead(BUTTON) == LOW){
+			printf("\n------AWAY MODE------\n");
+			printf("LDR Output (Channel 2):\n");
+			printf("LDR Output: %d\n", myAnalogRead(0,8,1));
+			printf("-----------------\n");
+			//delay(200);
+		}
+		*/
 	}
-}
 }
 return 0;
 }
